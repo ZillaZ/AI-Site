@@ -1,5 +1,6 @@
 import { type Writable, writable } from "svelte/store";
 export type Message = {
+  id: string,
   message: CMessage,
   created_at: number
 }

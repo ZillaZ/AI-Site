@@ -2,12 +2,12 @@
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
 
-    onMount(() => {
-        const cookies = document.cookie.split(";")
-        if (cookies.filter((e) => e.split("=")[0] == "Token").length == 1) {
-            goto("/chats")
-        }
-    })
+  onMount(() => {
+    const cookies = document.cookie.split(";");
+    if (cookies.filter((e) => e.split("=")[0] == "Token").length == 1) {
+      goto("/chats");
+    }
+  });
 
   let email = $state("");
   let password = $state("");
@@ -19,29 +19,41 @@
 
   async function request() {
     if (email.trim().length < 2 && password.trim().length < 8) {
+      alert("INVALID INPUT");
       return;
     }
-    let enc = new TextEncoder();
-    let dec = new TextDecoder("utf-8");
-    const password_hash_slice = await crypto.subtle.digest(
-      "SHA-256",
-      enc.encode(password)
-    );
-    const password_hash = stringToHex(dec.decode(password_hash_slice));
-    console.log(password_hash);
-    let response = await fetch("http://127.0.0.1:8080/login", {
+    console.log("PRE");
+    let response = await fetch("http://192.168.1.8:8080/login", {
       method: "POST",
-      body: email + "\n" + password_hash,
+      body: email + "\n" + password,
     });
+
+    console.log(response);
     document.cookie = response.headers.get("Cookie")!;
     console.log(response.headers);
     if (response.ok) {
       goto("/chats");
     }
   }
-
   let email_is_valid = $derived(email.trim().length > 1);
   let password_is_valid = $derived(password.trim().length > 7);
+
+  async function register() {
+    if (!email_is_valid || !password_is_valid) {
+      return;
+    }
+    const response = await fetch("http://192.168.1.8:8080/register", {
+      method: "POST",
+      body: email + "\n" + password,
+    });
+    if (response.ok) {
+      let buf = await response.body?.getReader().read()!;
+      const dec = new TextDecoder("utf-8");
+      const token = dec.decode(buf.value);
+      document.cookie = "Token=" + token;
+      goto("/chats");
+    }
+  }
 </script>
 
 <div class="content-wrapper">
@@ -56,12 +68,28 @@
   {#if !password_is_valid}
     <p class="invalid-input-label">Invalid Password</p>
   {/if}
-  <button onclick={request}>Login</button>
+  <div class="button-div">
+    <button onclick={async () => await request()}>Login</button>
+    <button onclick={async () => await register()}>Register</button>
+  </div>
 </div>
 
 <style>
   h1 {
     text-align: center;
+    color: white;
+  }
+
+  label {
+    color: white;
+  }
+
+  .button-div {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .content-wrapper {
@@ -79,5 +107,10 @@
     margin-top: 0;
     text-align: left;
     width: 25%;
+  }
+  button {
+    background-color: white;
+    width: 50%;
+    margin-top: 10%;
   }
 </style>
