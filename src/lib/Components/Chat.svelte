@@ -3,8 +3,8 @@
   import {
     chat_id as chat_id_store,
     messages as messages_store,
-    type Message,
   } from "$lib/stores";
+  import {type Message} from "$lib/types"
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import SvgClip from "./SvgClip.svelte";

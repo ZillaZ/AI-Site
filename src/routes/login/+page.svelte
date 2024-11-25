@@ -1,5 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import Navbar from "$lib/Components/Navbar.svelte";
+  import type { UserInfo } from "$lib/types";
+  import { user_info as user_info_store } from "$lib/stores";
   import { onMount } from "svelte";
 
   onMount(() => {
@@ -28,60 +31,75 @@
       body: email + "\n" + password,
     });
 
-    console.log(response);
-    document.cookie = response.headers.get("Cookie")!;
-    console.log(response.headers);
     if (response.ok) {
+      document.cookie = response.headers.get("Cookie")!;
+      let buf = await response.body?.getReader().read()!
+      let dec = new TextDecoder("utf-8")
+      const data = dec.decode(buf.value)
+      const user_info : UserInfo = JSON.parse(data)
+      user_info_store.set(user_info)
+      localStorage.setItem("user", JSON.stringify(user_info))
       goto("/chats");
     }
   }
+  
   let email_is_valid = $derived(email.trim().length > 1);
   let password_is_valid = $derived(password.trim().length > 7);
-
-  async function register() {
-    if (!email_is_valid || !password_is_valid) {
-      return;
-    }
-    const response = await fetch("http://192.168.1.8:8080/register", {
-      method: "POST",
-      body: email + "\n" + password,
-    });
-    if (response.ok) {
-      let buf = await response.body?.getReader().read()!;
-      const dec = new TextDecoder("utf-8");
-      const token = dec.decode(buf.value);
-      document.cookie = "Token=" + token;
-      goto("/chats");
-    }
-  }
+  let is_password_valid_field = $derived(password_is_valid ? " " : "Invalid Password")
+  let is_email_valid_field = $derived(email_is_valid ? "   " : "Invalid Email")
 </script>
 
+<Navbar/>
 <div class="content-wrapper">
-  <h1>Login Page</h1>
-  <label for="email">Email</label>
-  <input minlength="1" name="email" bind:value={email} type="email" />
-  {#if !email_is_valid}
-    <p class="invalid-input-label">Invalid Email</p>
-  {/if}
-  <label for="password">Password</label>
-  <input minlength="8" name="password" bind:value={password} type="password" />
-  {#if !password_is_valid}
-    <p class="invalid-input-label">Invalid Password</p>
-  {/if}
-  <div class="button-div">
-    <button onclick={async () => await request()}>Login</button>
-    <button onclick={async () => await register()}>Register</button>
+  <div class="login-div">
+    <div class="fields-div">
+      <label for="email">Email</label>
+      <input minlength="1" name="email" bind:value={email} type="email" />
+      <p class="invalid-input-label">{is_email_valid_field}</p>
+      <label for="password">Password</label>
+      <input minlength="8" name="password" bind:value={password} type="password" />
+      <p class="invalid-input-label">{is_password_valid_field}</p>
+    </div>
+    <div class="button-div">
+      <button onclick={async () => await request()}>Login</button>
+    </div>
+    <p class="registration-p">Não tem uma conta? <a href="/register">Registre-se</a></p>
   </div>
 </div>
 
 <style>
-  h1 {
-    text-align: center;
+  label {
     color: white;
   }
 
-  label {
+  a {
+    color: red;
+  }
+
+  a:hover {
     color: white;
+  }
+
+  .registration-p {
+    color: white;
+  }
+  
+  .fields-div {
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+  }
+
+  .login-div {
+    width: 50%;
+    height: 50%;
+    margin: auto;
+    background-color: #131313;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
   }
 
   .button-div {
@@ -89,16 +107,18 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    margin: 5% 0;
   }
 
   .content-wrapper {
-    width: 50vw;
+    height: 90%;
+    width: 100%;
     margin: 0 auto;
     justify-content: center;
     align-items: center;
     display: flex;
     flex-direction: column;
+    background-color: #101010;
   }
 
   .invalid-input-label {
@@ -106,11 +126,11 @@
     font-size: smaller;
     margin-top: 0;
     text-align: left;
-    width: 25%;
+    width: 100%;
   }
+
   button {
     background-color: white;
     width: 50%;
-    margin-top: 10%;
   }
 </style>

@@ -1,25 +1,28 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import Navbar from "$lib/Components/Navbar.svelte";
 
   function onclick() {
-    goto("/chats")
+    goto("/login")
   }
 </script>
 
+<Navbar/>
 <div class="content-wrapper">
-  <h1>AI Assistant</h1>
   <div class="div">
-    <button {onclick}>Go Chat</button>
+    <button class="gochat-button" {onclick}>Login</button>
   </div>
 </div>
 
 <style>
-  button {
+  .gochat-button {
     width: 50%;
     height: 50%;
     color:white;
-    background-color: black;
     border-radius: 15px;
+    border-style: solid;
+    border-width: 1px;
+    background-color: #131313;
   }
 
   button:hover {
@@ -27,18 +30,15 @@
     color: black;
   }
 
-  h1 {
-    color: white;
-  }
-
   .content-wrapper {
     margin: 0 auto;
-    height: 100vh;
-    width: 100vw;
+    height: 90%;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    background-color: #101010;
   }
 
   .div {

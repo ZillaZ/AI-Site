@@ -1,16 +1,29 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
-  import Chat from "./Chat.svelte";
-  import { chat_id as chat_id_store, messages } from "$lib/stores";
-  import Logout from "./Logout.svelte";
+  import Chat from "$lib/Components/Chat.svelte";
+  import {
+    chat_id as chat_id_store,
+    user_info as user_info_store,
+    messages,
+  } from "$lib/stores";
+  import Logout from "$lib/Components/Logout.svelte";
   import { delete_cookies } from "$lib/helper";
+  import type { UserInfo } from "$lib/types";
   let chats: string[] = $state([]);
   let token: string = "";
   let outer_chat_id: string = $state("");
+  let user_info: UserInfo = $state({
+    token: "",
+    name: "",
+    email: "",
+  });
+  user_info_store.subscribe((e) => (user_info = e));
   chat_id_store.subscribe((e) => (outer_chat_id = e));
   let chat;
   onMount(async () => {
+    user_info = JSON.parse(localStorage.getItem("user")!);
+    user_info_store.set(user_info);
     const cookies = document.cookie.split(";");
     token = cookies
       .filter((e) => e.split("=")[0] == "Token")
@@ -26,7 +39,7 @@
     });
 
     if (!response.ok) {
-      delete_cookies()
+      delete_cookies();
       goto("/login");
     }
     let buffer = await response.body?.getReader().read()!;
@@ -53,6 +66,7 @@
 
   async function new_chat() {
     const response = await fetch("http://192.168.1.8:8080/new_chat", {
+      method: "POST",
       headers: {
         Token: token,
       },
@@ -70,47 +84,73 @@
 
   async function delete_chat(chat_id: string) {
     const response = await fetch("http://192.168.1.8:8080/delete_chat", {
-      method: "POST",
+      method: "DELETE",
       headers: {
         Token: token,
       },
       body: chat_id,
     });
     if (response.ok) {
-      if(chat_id == outer_chat_id) {
-        messages.set([])
+      if (chat_id == outer_chat_id) {
+        messages.set([]);
       }
       chats = chats.filter((e) => e != chat_id);
     }
   }
 
   function logout() {
-    delete_cookies()
-    messages.set([])
-    goto("/")
+    delete_cookies();
+    messages.set([]);
+    goto("/");
+  }
+
+  function open_options(id: string) {
+    const element = document.getElementById(id)! as HTMLDivElement;
+    if (element.getAttribute("style")! == "") {
+      element.setAttribute("style", "display: none;");
+    } else {
+      element.setAttribute("style", "");
+    }
   }
 </script>
 
 <div class="content-wrapper">
   <div id="left-tab">
     <div class="header">
-      <button class="logout-button" onclick={logout}><Logout width={50} height={100} /></button>
-      <h1>Suas Conversas</h1>
+      <button class="logout-button" onclick={logout}
+        ><Logout width={3}/></button
+      >
+      <h1>Olá, {user_info.name}</h1>
     </div>
     <div class="chats">
       {#each chats as chat_id}
-        <div class="buttons-wrapper">
-          <button
-            disabled={outer_chat_id === chat_id}
-            class="button chat-button"
-            onclick={() => get_messages(chat_id)}
-            >{chat_id.substring(0, 10) + "..."}</button
-          >
-          <button
-            class="button delete-button"
-            onclick={() => delete_chat(chat_id)}>Delete Chat</button
-          >
-        </div>
+        {#if chat_id}
+          <div class="buttons-wrapper">
+            <button
+              disabled={outer_chat_id === chat_id}
+              class="button chat-button"
+              onclick={() => get_messages(chat_id)}
+              >{chat_id.substring(0, 10)}</button
+            >
+            <button
+              class="button options-button"
+              onmouseenter={() => open_options(chat_id)}>...</button
+            >
+            <div
+              role="list"
+              aria-roledescription="fodase"
+              onmouseleave={() => open_options(chat_id)}
+              id={chat_id}
+              style="display: none;"
+              class="option-list"
+            >
+              <button class="edit-button">Edit Name</button>
+              <button class="delete-button" onclick={() => delete_chat(chat_id)}
+                >Delete Chat</button
+              >
+            </div>
+          </div>
+        {/if}
       {/each}
     </div>
     <div class="new-chat">
@@ -121,6 +161,20 @@
 </div>
 
 <style>
+  .option-list {
+    background-color: white;
+    width: 10%;
+    height: 10%;
+    z-index: 100;
+    position: absolute;
+    left: 20%;
+    margin-top: 5%;
+  }
+
+  .options-button {
+    width: 30%;
+  }
+
   .buttons-wrapper {
     width: 100%;
     display: flex;
@@ -135,10 +189,22 @@
   }
 
   .delete-button {
-    width: 20%;
-    margin-left: 10%;
+    height: 50%;
+    width: 100%;
     color: red;
     font-size: smaller;
+  }
+
+  .edit-button {
+    height: 50%;
+    width: 100%;
+    font-size: smaller;
+    color: black;
+  }
+
+  .edit-button:hover {
+    color: white;
+    background-color: black;
   }
 
   .delete-button:hover {
@@ -174,8 +240,7 @@
 
   #left-tab {
     height: 100%;
-    width: 28vw;
-    margin: 0 auto;
+    width: 28%;
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -183,7 +248,6 @@
     align-items: center;
     background-color: #161616;
     color: white;
-    border-radius: 5%;
   }
 
   .chats {
@@ -195,12 +259,14 @@
   }
 
   .content-wrapper {
-    height: 95vh;
-    width: 98vw;
+    height: 100%;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0;
+    background-color: #202020;
+    margin: auto;
   }
 
   .new-chat {

@@ -1,12 +1,12 @@
 <script lang="ts">
   import Markdown from "svelte-exmarkdown";
-  import { messages as messages_store, type Message } from "$lib/stores";
+  import { messages as messages_store } from "$lib/stores"
+  import { type Message }  from "$lib/types";
   import { onMount } from "svelte";
   import PlayButton from "./PlayButton.svelte";
   let messages: Message[] = $state([]);
   let chat: HTMLDivElement;
   let token = "";
-  let isAudioPlaying = false
   onMount(async () => {
     console.log(document.cookie);
     const cookies = document.cookie.split(";");
@@ -34,7 +34,6 @@
     return;
   }
 
-  // Fetch audio data from the server
   const response = await fetch("http://192.168.1.8:8080/audio", {
     method: "POST",
     headers: {
@@ -54,14 +53,14 @@
   const audio = document.createElement("audio");
   audio.id = id + "_audio"
   audio.src = link;
-  audio.controls = true; // Enable full controls
-  audio.style.width = "50%"; // Optional: Style the player
+  audio.controls = true;
+  audio.style.width = "50%";
   
   if (!audioPlayer && container) {
     container.appendChild(audio);
   }
 
-  button.id = ""; // Mark button as handled
+  button.id = "";
 }
 
 </script>
