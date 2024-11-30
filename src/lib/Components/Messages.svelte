@@ -1,13 +1,34 @@
 <script lang="ts">
   import Markdown from "svelte-exmarkdown";
-  import { messages as messages_store } from "$lib/stores"
-  import { type Message }  from "$lib/types";
+  import {
+    messages as messages_store,
+    audio as audio_store,
+  } from "$lib/stores";
+  import { type ClientMessage, type Message } from "$lib/types";
   import { onMount } from "svelte";
   import PlayButton from "./PlayButton.svelte";
+  import { websocket } from "$lib/websocket";
+  import { SvelteMap } from "svelte/reactivity";
+  import { format_date } from "$lib/helper";
+  
   let messages: Message[] = $state([]);
   let chat: HTMLDivElement;
   let token = "";
+  let audios = $state(new SvelteMap());
+  
+  audio_store.subscribe((e) => {
+    audios = e;
+  });
   onMount(async () => {
+    messages_store.subscribe((e) => {
+      console.log("UPDATING MESSAGES");
+      messages = e;
+      setTimeout(() => {
+        if (!chat) return;
+        chat.scrollTop = chat.scrollHeight;
+      }, 100);
+    });
+
     console.log(document.cookie);
     const cookies = document.cookie.split(";");
     token = cookies
@@ -15,54 +36,18 @@
       .map((e) => e.split("=")[1].trim())[0];
   });
 
-  messages_store.subscribe((e) => {
-    messages = e;
-    setTimeout(() => {
-      if (!chat) return;
-      chat.scrollTop = chat.scrollHeight;
-    }, 100);
-  });
-
-  function format_date(timestamp: number): string {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  }
-
   async function speak(id: string) {
-  const button = document.getElementById(id + "_button")!;
-  if (button.id === "") {
-    return;
+    const request: ClientMessage = {
+      kind: "audio",
+      body: {
+        get_audio: {
+          token,
+          message_id: id,
+        },
+      },
+    };
+    websocket.send(JSON.stringify(request));
   }
-
-  const response = await fetch("http://192.168.1.8:8080/audio", {
-    method: "POST",
-    headers: {
-      Token: token,
-    },
-    body: id,
-  });
-  const data = await response.text();
-  const byteArray = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-  const blob = new Blob([byteArray], { type: "audio/mpeg" });
-
-  const container = document.getElementById(id);
-  const audioPlayer = document.getElementById(id + "_audio")
-  button.remove()
-  
-  const link = URL.createObjectURL(blob);
-  const audio = document.createElement("audio");
-  audio.id = id + "_audio"
-  audio.src = link;
-  audio.controls = true;
-  audio.style.width = "50%";
-  
-  if (!audioPlayer && container) {
-    container.appendChild(audio);
-  }
-
-  button.id = "";
-}
-
 </script>
 
 <div bind:this={chat} class="messages-wrapper">
@@ -70,10 +55,16 @@
     {#if message.message.role == "assistant"}
       <div id={message.id} class="message assistant-message">
         <Markdown md={message.message.content} />
-        <p class="date">{format_date(message.created_at)}</p><br>
-        <button class="play-button" id={message.id + "_button"} onclick={() => speak(message.id)}
-          ><PlayButton height={0} width={5}></PlayButton></button
-        >
+        <p class="date">{format_date(message.created_at)}</p>
+        <br />
+        {#if audios.get(message.id)}
+          <audio controls src={audios.get(message.id) as string}></audio>
+        {/if}
+        {#if !audios.get(message.id)}
+          <button class="play-button" onclick={() => speak(message.id)}
+            ><PlayButton height={0} width={5}></PlayButton></button
+          >
+        {/if}
       </div>
     {/if}
     {#if message.message.role == "user"}
@@ -86,33 +77,66 @@
 </div>
 
 <style>
-  .message {
-    border-radius: 5px;
-    border-width: 1px;
-    border-style: solid;
-    min-width: 5%;
-    max-width: 70%;
-    padding: 0 1rem;
-    margin-bottom: 10px;
-    padding: 1rem;
-    white-space: pre-wrap;
-    height:fit-content;
+  @media screen and (min-width: 600px) {
+    .message {
+      border-radius: 5px;
+      border-width: 1px;
+      border-style: solid;
+      min-width: 5%;
+      max-width: 70%;
+      padding: 0 1rem;
+      margin-bottom: 10px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      height: fit-content;
+    }
+
+    .assistant-message {
+      background-color: #101010;
+      color: white;
+    }
+
+    .user-message {
+      margin-left: auto;
+      background-color: #dddddd;
+      border-color: black;
+    }
+
+    .date {
+      font-size: smaller;
+      color: red;
+    }
+
+    .messages-wrapper {
+      width: 100%;
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      padding: 1rem;
+    }
+
+    .play-button {
+      color: white;
+      font-size: large;
+    }
   }
 
-  .assistant-message {
-    background-color: #101010;
-    color: white;
-  }
-
-  .user-message {
-    margin-left: auto;
-    background-color: #dddddd;
-    border-color: black;
-  }
-
-  .date {
-    font-size: smaller;
-    color: red;
+  @media screen and (max-width: 600px) {
+    .message {
+      border-radius: 5px;
+      border-width: 1px;
+      border-style: solid;
+      min-width: 5%;
+      max-width: 90%;
+      padding: 0 1rem;
+      margin-bottom: 10px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      height: fit-content;
+    }
   }
 
   .messages-wrapper {
@@ -129,5 +153,20 @@
   .play-button {
     color: white;
     font-size: large;
+  }
+  .assistant-message {
+    background-color: #101010;
+    color: white;
+  }
+
+  .user-message {
+    margin-left: auto;
+    background-color: #dddddd;
+    border-color: black;
+  }
+
+  .date {
+    font-size: smaller;
+    color: red;
   }
 </style>

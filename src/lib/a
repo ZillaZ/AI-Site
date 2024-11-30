@@ -1,0 +1,16 @@
+      for (let entry of e) {
+        const key = entry[0];
+        const value = entry[1];
+        const audioPlayer = document.getElementById(key + "_audio");
+        const button = document.getElementById(key + "_button");
+        const audio = document.createElement("audio");
+        audio.id = key + "_audio";
+        audio.src = value;
+        audio.controls = true;
+        audio.style.width = "50%";
+        const container = document.getElementById(key)!;
+        if (!audioPlayer && container) {
+          container.appendChild(audio);
+          button?.remove();
+        }
+      }

@@ -21,13 +21,11 @@
     color:white;
     border-radius: 15px;
     border-style: solid;
-    border-width: 1px;
-    background-color: #131313;
+    background-color: #000000f0;
   }
 
   button:hover {
-    background-color: white;
-    color: black;
+    background-color: #080808f0;
   }
 
   .content-wrapper {
@@ -38,7 +36,7 @@
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    background-color: #101010;
+    background-color: #000000a0;
   }
 
   .div {
