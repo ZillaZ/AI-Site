@@ -14,7 +14,10 @@
   import type { ClientMessage, UserInfo } from "$lib/types";
   import { websocket } from "$lib/websocket";
   let chats: string[] = $state([]);
-  chats_store.subscribe((e) => (chats = e));
+  chats_store.subscribe((e) => {
+    console.log("UPDATING CHATS")
+    chats = e
+  });
   let token: string = "";
   let outer_chat_id: string = $state("");
   let user_info: UserInfo = $state({
@@ -45,7 +48,7 @@
       },
     };
     while (websocket.readyState != 1) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     websocket.send(JSON.stringify(request));
   });
@@ -64,7 +67,7 @@
     websocket.send(JSON.stringify(request));
   }
 
-  async function new_chat() {
+  function new_chat() {
     const request: ClientMessage = {
       kind: "new_chat",
       body: {
@@ -103,7 +106,6 @@
   }
 
   function open_options(id: string) {
-    if (option_flag != "" && option_flag != id) return;
     const element = document.getElementById(id)! as HTMLDivElement;
     const button = document.getElementById(
       id + "_options"

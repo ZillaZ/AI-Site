@@ -6,7 +6,7 @@ import {
   chats as chats_store,
   messages as messages_store,
   token,
-  audio as audio_store
+  audio as audio_store,
 } from "$lib/stores";
 
 export const websocket = new WebSocket("ws://" + PUBLIC_API_ENDPOINT);
@@ -29,9 +29,12 @@ function user_info0(response: ServerResponse) {
 
 function chat_id(response: ServerResponse) {
   if (!response.chat_id) return;
-  console.log(response.chat_id);
-  chats_store.update((e: string[]) => [...e, response.chat_id]);
-  chat_id_store.set(response.chat_id);
+  console.log("NEW CHAT CREATED");
+  chats_store.update((e: string[]) => {
+    console.log(e);
+    return [...e, response.chat_id];
+  });
+  //chat_id_store.set(response.chat_id);
 }
 
 function message(response: ServerResponse) {
@@ -54,20 +57,19 @@ function audio(response: ServerResponse) {
   const byteArray = Uint8Array.from(atob(response.audio.content), (c) =>
     c.charCodeAt(0)
   );
-  const blob = new Blob([byteArray], { type: "audio/mpeg" });  
+  const blob = new Blob([byteArray], { type: "audio/mpeg" });
   const link = URL.createObjectURL(blob);
-  audio_store.update((e) => e.set(response.audio.message_id, link))
+  audio_store.update((e) => e.set(response.audio.message_id, link));
 }
 
 function deleted(response: ServerResponse) {
-    if(!response.deleted) return;
-    chats_store.update((e : string[]) => e.filter((v) => v != response.deleted))
+  if (!response.deleted) return;
+  chats_store.update((e: string[]) => e.filter((v) => v != response.deleted));
 }
 
 function onMessage(event: MessageEvent) {
   console.log(event.data);
   const response: ServerResponse = JSON.parse(event.data);
-  console.log(response);
   user_info0(response);
   login(response);
   chat_id(response);
@@ -75,5 +77,5 @@ function onMessage(event: MessageEvent) {
   chats(response);
   messages(response);
   audio(response);
-  deleted(response)
+  deleted(response);
 }
